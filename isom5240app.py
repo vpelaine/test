@@ -1,31 +1,32 @@
-# Program title: Simple Storytelling App (Text to Story + Audio)
-
 import streamlit as st
 from transformers import pipeline
+from PIL import Image
 
-# Set up the page
-st.set_page_config(page_title="Text to Audio Story", page_icon="🦜")
-st.header("Turn Your Text into an Audio Story")
+# Title
+st.title("Age Classification using ViT")
 
-# User enters text
-user_text = st.text_area("Enter a prompt or scenario for your story:")
+# Load the age classification pipeline
+age_classifier = pipeline("image-classification",
+                          model="nateraw/vit-age-classifier")
 
-if user_text:
-    # Stage 1: Text to Story
-    st.text('Generating a story...')
-    story_generator = pipeline("text-generation", model="pranavpsv/genre-story-generator-v2")
-    story = story_generator(user_text)[0]['generated_text']
-    st.write(story)
+# Upload image
+uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
-    # Stage 2: Story to Audio
-    st.text('Generating audio data...')
-    audio_generator = pipeline("text-to-audio", model="Matthijs/mms-tts-eng")
-    speech_output = audio_generator(story)
+if uploaded_file is not None:
+    # Open and display image
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Play button
-    if st.button("Play Audio"):
-        audio_array = speech_output["audio"]
-        sample_rate = speech_output["sampling_rate"]
-        # Play audio directly using Streamlit
-        st.audio(audio_array,
-                 sample_rate=sample_rate)
+    # Classify age
+    age_predictions = age_classifier(image)
+    age_predictions = sorted(age_predictions, key=lambda x: x['score'], reverse=True)
+
+    # Display results
+    st.subheader("Predicted Age Range")
+    st.write(f"Age range: {age_predictions[0]['label']}")
+
+    # Show all predictions with scores
+    st.write("All predictions:")
+    for pred in age_predictions:
+        st.write(f"{pred['label']}: {pred['score']:.4f}")
+
